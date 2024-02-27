@@ -40,7 +40,7 @@ namespace Microsoft.AspNetCore.Builder
                     .ApplicationServices.GetService<ISwaggerEndPointProvider>().GetAll();
 
                 ChangeDetection(app, c, options);
-                AddSwaggerEndPoints(c, endPoints, options.DownstreamSwaggerEndPointBasePath);
+                AddSwaggerEndPoints(c, endPoints, options.DownstreamSwaggerEndPointBasePath,app);
             });
 
             return app;
@@ -53,7 +53,7 @@ namespace Microsoft.AspNetCore.Builder
             endpointsChangeMonitor.OnChange((newEndpoints) =>
             {
                 c.ConfigObject.Urls = null;
-                AddSwaggerEndPoints(c, newEndpoints, options.DownstreamSwaggerEndPointBasePath);
+                AddSwaggerEndPoints(c, newEndpoints, options.DownstreamSwaggerEndPointBasePath,app);
             });
         }
 
@@ -78,7 +78,7 @@ namespace Microsoft.AspNetCore.Builder
         private static void AddSwaggerEndPoints(
             SwaggerUIOptions c,
             IReadOnlyList<SwaggerEndPointOptions> endPoints,
-            string basePath)
+            string basePath,IApplicationBuilder app)
         {
             static string GetDescription(SwaggerEndPointConfig config)
                 => config.IsGatewayItSelf ? config.Name : $"{config.Name} - {config.Version}";
@@ -94,6 +94,12 @@ namespace Microsoft.AspNetCore.Builder
                 foreach (SwaggerEndPointConfig config in endPoint.Config)
                 {
                     c.SwaggerEndpoint($"{basePath}/{config.Version}/{endPoint.KeyToPath}", GetDescription(config));
+                    app.UseReDoc(c =>
+                    {
+                        c.DocumentTitle = GetDescription(config);
+                        c.SpecUrl = $"{basePath}/{config.Version}/{endPoint.KeyToPath}";
+                        c.RoutePrefix = $"{endPoint.KeyToPath}/{config.Version}";
+                    });
                 }
             }
         }
